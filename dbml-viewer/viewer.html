@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>DBML Viewer</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+:root{--bg:#0f1218;--dot:#252c3a;--card:#1b212c;--cardb:#2c3546;--txt:#dfe5ee;--mut:#8591a5;--line:#6f7f9c;--hl:#4da3ff;--rowh:#242c3a;--hd:#2d6cdf;--bar:#161b24;--barb:#262e3d;--btn:#222a38;--btnh:#2c3647;--pk:#f5c04a;--fk:#5db2ff;
+ --ed:#121620;--gut:#586277;--tc:#6a7a8f;--ts:#a5d6a7;--tk:#c792ea;--tt:#82aaff;--ta:#ffcb6b;--tn:#f78c6c;--to:#89ddff;--tp:#8a96ad;--tq:#e6edf7;--band:rgba(77,163,255,.10);--sw:440px}
+body.light{--bg:#f3f5f9;--dot:#d5dbe6;--card:#ffffff;--cardb:#cdd5e2;--txt:#1d2433;--mut:#6a7588;--line:#8190aa;--hl:#1f6feb;--rowh:#eef2f8;--bar:#ffffff;--barb:#dbe1ec;--btn:#f0f3f8;--btnh:#e3e9f3;--pk:#b7791f;--fk:#1f6feb;
+ --ed:#fbfcfe;--gut:#9aa5b8;--tc:#8a94a6;--ts:#2e7d32;--tk:#8e24aa;--tt:#1565c0;--ta:#b26a00;--tn:#d84315;--to:#00838f;--tp:#6b768b;--tq:#1d2433;--band:rgba(31,111,235,.09)}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--txt);font:13px/1.35 "Segoe UI",system-ui,sans-serif}
+#bar{position:fixed;inset:0 0 auto 0;height:46px;display:flex;align-items:center;gap:8px;padding:0 12px;background:var(--bar);border-bottom:1px solid var(--barb);z-index:1000}
+#bar .brand{font-weight:600;display:flex;gap:8px;align-items:center;white-space:nowrap;max-width:28vw;overflow:hidden;text-overflow:ellipsis}
+#bar .brand b{color:var(--hl)}
+#dirty{color:#ffb020;display:none}
+#q{width:240px;max-width:24vw;padding:6px 10px;border-radius:6px;border:1px solid var(--barb);background:var(--btn);color:var(--txt);outline:none}
+#q:focus{border-color:var(--hl)}
+.sp{flex:1}
+button{font:inherit;color:var(--txt);background:var(--btn);border:1px solid var(--barb);border-radius:6px;padding:5px 10px;cursor:pointer}
+button:hover{background:var(--btnh)}
+button.pri{background:var(--hl);border-color:var(--hl);color:#fff}
+button.pri:disabled{opacity:.45;cursor:default}
+#bSide.on{border-color:var(--hl);color:var(--hl)}
+#zoom{min-width:44px;text-align:center;color:var(--mut)}
+#saveState{color:var(--mut);font-size:12px;white-space:nowrap}
+#saveState.bad{color:#ff6b5e}
+
+/* ---- sidebar de código ---- */
+#side{position:fixed;left:0;top:46px;bottom:0;width:var(--sw);background:var(--ed);border-right:1px solid var(--barb);display:flex;flex-direction:column;z-index:800;overflow:hidden}
+body.noside #side,body.noside #split{display:none}
+#edHead{height:30px;display:flex;align-items:center;padding:0 12px;color:var(--mut);font-size:12px;letter-spacing:.04em;text-transform:uppercase;border-bottom:1px solid var(--barb);flex:none}
+#edMain{position:relative;flex:1;min-height:0;display:flex}
+#gut{width:52px;flex:none;overflow:hidden;position:relative;border-right:1px solid var(--barb)}
+#gutIn{margin:0;padding:10px 10px 40px 0;text-align:right;color:var(--gut);font:13px/20px Consolas,"Cascadia Mono",monospace;position:absolute;left:0;right:0;top:0}
+#gutIn .gerr{color:#fff;background:#d64545;border-radius:3px;padding:0 4px}
+#edBody{position:relative;flex:1;min-width:0;overflow:hidden}
+#layer{position:absolute;left:0;top:0;pointer-events:none}
+#hl,#ta{margin:0;padding:10px 16px 40px 12px;font:13px/20px Consolas,"Cascadia Mono",monospace;tab-size:2;white-space:pre;letter-spacing:0;font-variant-ligatures:none;border:0}
+#hl{position:relative;color:var(--txt);min-width:100%}
+#ta{position:absolute;inset:0;width:100%;height:100%;resize:none;outline:none;background:transparent;color:transparent;caret-color:var(--txt);overflow:auto;overflow-wrap:normal}
+#ta::selection{background:rgba(77,163,255,.35);color:transparent}
+#band{position:absolute;left:0;width:9999px;background:var(--band);display:none}
+#band.flash{animation:fl 1.1s ease-out}
+@keyframes fl{0%{background:rgba(255,176,32,.55)}100%{background:var(--band)}}
+.tc{color:var(--tc);font-style:italic}.ts{color:var(--ts)}.tk{color:var(--tk);font-weight:600}.tt{color:var(--tt)}.ta{color:var(--ta)}.tn{color:var(--tn)}.to{color:var(--to)}.tp{color:var(--tp)}.tq{color:var(--tq)}
+#edErr{display:none;flex:none;padding:6px 12px;background:rgba(214,69,69,.15);color:#ff7b70;border-top:1px solid #d64545;font:12px Consolas,monospace;cursor:pointer;max-height:80px;overflow:auto}
+#split{position:fixed;left:calc(var(--sw) - 3px);top:46px;bottom:0;width:6px;cursor:col-resize;z-index:850}
+#split:hover,#split.drag{background:var(--hl);opacity:.5}
+
+/* ---- diagrama ---- */
+#vp{position:fixed;left:var(--sw);right:0;top:46px;bottom:0;overflow:hidden;cursor:grab;touch-action:none;background-image:radial-gradient(var(--dot) 1.2px,transparent 1.3px);background-size:24px 24px}
+body.noside #vp{left:0}
+#vp.panning{cursor:grabbing}
+#world{position:absolute;left:0;top:0;transform-origin:0 0}
+#edges{position:absolute;left:0;top:0;overflow:visible;pointer-events:none}
+.edge path.ln{fill:none;stroke:var(--line);stroke-width:1.5}
+.edge path.mk{fill:none;stroke:var(--line);stroke-width:1.5}
+.edge.enum path.ln{stroke-dasharray:5 4;opacity:.7}
+.edge.hl path{stroke:var(--hl);stroke-width:2.2}
+.edge.dim{opacity:.12}
+.tbl{position:absolute;min-width:190px;background:var(--card);border:1px solid var(--cardb);border-radius:7px;box-shadow:0 2px 8px rgba(0,0,0,.28);user-select:none;-webkit-user-select:none;cursor:grab;overflow:hidden}
+.tbl.dragging{cursor:grabbing;box-shadow:0 8px 24px rgba(0,0,0,.45);border-color:var(--hl)}
+.tbl.dim{opacity:.3}
+.tbl.cur{border-color:var(--hl)}
+.tbl.sel{border-color:var(--hl);box-shadow:0 0 0 2px color-mix(in srgb,var(--hl) 45%,transparent)}
+.tbl.match{border-color:#ffb020;box-shadow:0 0 0 2px rgba(255,176,32,.5)}
+.hd{padding:7px 12px;background:var(--hd);color:#fff;font-weight:600;font-size:13px;white-space:nowrap;display:flex;gap:6px;align-items:baseline}
+.hd small{font-weight:400;opacity:.75;font-size:11px}
+.rw{display:flex;align-items:center;gap:12px;padding:4px 12px;border-top:1px solid var(--cardb);font-size:12px;white-space:nowrap}
+.rw:hover{background:var(--rowh)}
+.cn{flex:1}
+.ty{color:var(--mut);font-family:Consolas,"Cascadia Mono",monospace;font-size:11px}
+.bd{font-size:9px;font-weight:700;border-radius:3px;padding:0 4px;line-height:14px;border:1px solid currentColor}
+.bd.pk{color:var(--pk)}.bd.fk{color:var(--fk)}
+.tbl.enum .hd{background:#7c4dbb}
+.tbl.enum .rw .cn{font-family:Consolas,monospace}
+#status{position:fixed;left:calc(var(--sw) + 12px);bottom:10px;z-index:900;color:var(--mut);font-size:12px;background:var(--bar);border:1px solid var(--barb);border-radius:6px;padding:4px 10px;max-width:60vw}
+body.noside #status{left:12px}
+#hint{position:fixed;right:12px;bottom:10px;z-index:900;color:var(--mut);font-size:12px;background:var(--bar);border:1px solid var(--barb);border-radius:6px;padding:4px 10px}
+#empty{position:fixed;left:var(--sw);right:0;top:46px;bottom:0;display:none;align-items:center;justify-content:center;z-index:700;color:var(--mut);font-size:16px;text-align:center;pointer-events:none}
+body.noside #empty{left:0}
+#ext{position:fixed;left:calc(var(--sw) + 12px);top:56px;z-index:960;display:none;gap:8px;align-items:center;background:var(--bar);border:1px solid #ffb020;border-radius:8px;padding:8px 12px}
+body.noside #ext{left:12px}
+</style>
+</head>
+<body>
+<header id="bar">
+  <button id="bSide" class="on" title="Mostrar/ocultar o código (Ctrl+B)">&lt;/&gt;</button>
+  <div class="brand"><b>◈</b><span id="fname">DBML Editor</span><span id="dirty" title="Alterações não salvas">●</span></div>
+  <input id="q" placeholder="Buscar tabela ou coluna  ( / )" autocomplete="off">
+  <div class="sp"></div>
+  <span id="saveState"></span>
+  <button id="bSave" class="pri" title="Salvar (Ctrl+S)" disabled>Salvar</button>
+  <button id="bFit" title="Enquadrar tudo (tecla 0)">Ajustar</button>
+  <button id="bOrg" title="Descarta suas posições e organiza automaticamente">Reorganizar</button>
+  <button id="bMinus">−</button><span id="zoom">100%</span><button id="bPlus">+</button>
+  <button id="bTheme">Tema</button>
+  <button id="bOpen">Abrir…</button>
+  <input id="file" type="file" accept=".dbml,.txt" hidden>
+</header>
+
+<aside id="side">
+  <div id="edHead">Código DBML</div>
+  <div id="edMain">
+    <div id="gut"><pre id="gutIn"></pre></div>
+    <div id="edBody">
+      <div id="layer"><div id="band"></div><pre id="hl"></pre></div>
+      <textarea id="ta" spellcheck="false" wrap="off" autocomplete="off" autocapitalize="off"></textarea>
+    </div>
+  </div>
+  <div id="edErr"></div>
+</aside>
+<div id="split"></div>
+
+<div id="vp"><div id="world"><svg id="edges" width="1" height="1"></svg></div></div>
+<div id="empty">Abra um arquivo .dbml ou comece a escrever no editor</div>
+<div id="ext"><span>O arquivo foi alterado em disco.</span><button id="extReload">Recarregar do disco</button><button id="extKeep">Manter o meu</button></div>
+<div id="status"></div>
+<div id="hint">Clique numa tabela para ir ao código · arraste para organizar · roda: zoom</div>
+
+<script src="session.js" onerror="void 0"></script>
+<script src="js/parser.js"></script>
+<script src="js/layout.js"></script>
+<script src="js/editor.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

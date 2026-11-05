@@ -1,0 +1,4 @@
+# gerado pelo install.ps1 (compilado a partir de DbmlViewer.cs)
+*.exe
+# configurações locais do Claude Code / ferramentas
+.claude/

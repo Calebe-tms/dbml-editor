@@ -1,0 +1,131 @@
+// Exemplo de teste — e-commerce
+Project loja {
+  database_type: 'PostgreSQL'
+  Note: 'Projeto de teste'
+}
+
+Enum order_status {
+  pending [note: 'aguardando pagamento']
+  paid
+  shipped
+  delivered
+  cancelled
+}
+
+Enum "user role" {
+  admin
+  customer
+}
+
+Table users as U [headercolor: #3498DB] {
+  id integer [pk, increment]
+  email varchar(255) [unique, not null, note: 'login do usuário']
+  name varchar
+  role "user role" [default: 'customer']
+  created_at timestamp [default: `now()`]
+  Note: 'Usuários do sistema'
+}
+
+Table addresses {
+  id integer [pk]
+  user_id integer [not null, ref: > users.id]
+  street varchar
+  city varchar
+  zip varchar(10)
+}
+
+Table public.products [headercolor: #27ae60] {
+  id integer [pk]
+  category_id integer
+  sku varchar [unique]
+  title varchar
+  price decimal(10,2)
+  tags varchar[]
+  indexes {
+    (category_id, title) [name: 'idx_cat_title']
+    sku [unique]
+  }
+}
+
+Table categories {
+  id integer [pk]
+  parent_id integer [ref: > categories.id]
+  name varchar
+}
+
+Table orders {
+  id integer [pk]
+  user_id integer [not null]
+  address_id integer
+  status order_status
+  total decimal
+  created_at timestamp
+}
+
+Table order_items {
+  order_id integer
+  product_id integer
+  qty integer [not null, default: 1]
+  unit_price decimal
+  indexes {
+    (order_id, product_id) [pk]
+  }
+}
+
+Table payments [headercolor: #e67e22] {
+  id integer [pk]
+  order_id integer [unique]
+  method varchar
+  paid_at timestamp
+}
+
+Table reviews {
+  id integer [pk]
+  product_id integer
+  user_id integer
+  rating smallint
+  body text
+}
+
+Table coupons {
+  id integer [pk]
+  code varchar [unique]
+  discount decimal
+}
+
+Table orders_coupons {
+  order_id integer
+  coupon_id integer
+}
+
+Table audit_log {
+  id bigint [pk]
+  payload jsonb
+}
+
+Table "settings tbl" {
+  key varchar [pk]
+  value text
+}
+
+Ref: orders.user_id > users.id [delete: cascade]
+Ref: orders.address_id > addresses.id
+Ref: products.category_id > categories.id
+
+Ref fk_items {
+  order_items.order_id > orders.id
+  order_items.product_id > products.id
+}
+
+Ref: payments.order_id - orders.id
+Ref: reviews.product_id > products.id
+Ref: reviews.user_id > users.id
+Ref: orders_coupons.order_id > orders.id
+Ref: orders_coupons.coupon_id > coupons.id
+Ref: U.id <> audit_log.id
+
+TableGroup vendas {
+  orders
+  order_items
+  payments
+}
